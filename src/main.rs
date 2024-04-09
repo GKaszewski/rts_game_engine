@@ -3,6 +3,13 @@ mod engine;
 
 use engine::game_module::*;
 use engine::pathfinding_module::*;
+use engine::selection_module::draw_selection_box;
+use engine::selection_module::draw_selection_on_units;
+use engine::selection_module::get_units_in_selection_system;
+use engine::selection_module::initialize_selection_module;
+use engine::selection_module::selection_box_system;
+use engine::unit_module::draw_units;
+use engine::unit_module::initialize_units;
 
 simple_game!("RTS Game Engine", GameState, config, setup, update);
 
@@ -16,6 +23,8 @@ fn config(config: GameConfig) -> GameConfig {
 fn setup(state: &mut GameState, c: &mut EngineContext) {
     state.level.initialize(c);
     state.set_board_based_on_tilemap();
+    initialize_units();
+    initialize_selection_module(c);
 }
 
 fn place(state: &mut GameState, x: i32, y: i32) {
@@ -86,25 +95,28 @@ fn update(state: &mut GameState, _c: &mut EngineContext) {
         state.draw_pathfinding = !state.draw_pathfinding;
     }
 
-    if is_mouse_button_down(MouseButton::Left) {
-        let mouse_pos = mouse_world();
-        // let node = match state.board.offset {
-        //     Some(offset) => state.board.get_node_by_position(
-        //         (mouse_pos.x - offset.x) as i32,
-        //         (mouse_pos.y - offset.y) as i32,
-        //     ),
-        //     None => state
-        //         .board
-        //         .get_node_by_position(mouse_pos.x as i32, mouse_pos.y as i32),
-        // };
-        let node = state
-            .board
-            .get_node_by_position(mouse_pos.x as i32, mouse_pos.y as i32);
-        println!("Clicked on node: {:?}", node);
-        if let Some(node) = node {
-            place(state, node.x, node.y);
-        }
-    }
+    selection_box_system();
+    get_units_in_selection_system();
+
+    // if is_mouse_button_down(MouseButton::Left) {
+    //     let mouse_pos = mouse_world();
+    //     // let node = match state.board.offset {
+    //     //     Some(offset) => state.board.get_node_by_position(
+    //     //         (mouse_pos.x - offset.x) as i32,
+    //     //         (mouse_pos.y - offset.y) as i32,
+    //     //     ),
+    //     //     None => state
+    //     //         .board
+    //     //         .get_node_by_position(mouse_pos.x as i32, mouse_pos.y as i32),
+    //     // };
+    //     let node = state
+    //         .board
+    //         .get_node_by_position(mouse_pos.x as i32, mouse_pos.y as i32);
+    //     println!("Clicked on node: {:?}", node);
+    //     if let Some(node) = node {
+    //         place(state, node.x, node.y);
+    //     }
+    // }
 
     state.rts_camera.update();
 
@@ -140,4 +152,7 @@ fn update(state: &mut GameState, _c: &mut EngineContext) {
     );
 
     state.level.draw();
+    draw_units();
+    draw_selection_box();
+    draw_selection_on_units();
 }
