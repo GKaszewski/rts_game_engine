@@ -1,4 +1,8 @@
-use comfy::*;
+use comfy::{
+    wgpu::{Extent3d, TextureFormat},
+    wgpu_types::TextureDescriptor,
+    *,
+};
 
 use super::TILEMAP_Z_INDEX;
 
@@ -31,7 +35,7 @@ impl Map {
 
     pub fn draw(&self) {
         let map_json = &self.map.json;
-        let level = &map_json.levels[0];
+        let level = &map_json.levels[1];
         for (i, layer) in level
             .layer_instances
             .as_ref()

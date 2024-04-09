@@ -171,7 +171,7 @@ impl PathfindingTerrain {
     pub fn set_pathfinding_based_on_tilemap(&mut self, level_map: &LdtkWorldMap) {
         let map = level_map;
         let map_json = &map.json;
-        let level = &map_json.levels[0];
+        let level = &map_json.levels[1];
         for (_, layer) in level
             .layer_instances
             .as_ref()

@@ -60,13 +60,27 @@ pub fn get_units_in_selection_system() {
         let (_, selection_box) = selection_box_query;
 
         for (entity, (transform, _)) in &mut world().query::<(&Transform, &Unit)>().iter() {
-            if transform.position.x > selection_box.start.x
-                && transform.position.x < selection_box.end.x
-                && transform.position.y > selection_box.start.y
-                && transform.position.y < selection_box.end.y
+            let min_x = selection_box.start.x.min(selection_box.end.x);
+            let max_x = selection_box.start.x.max(selection_box.end.x);
+
+            let min_y = selection_box.start.y.min(selection_box.end.y);
+            let max_y = selection_box.start.y.max(selection_box.end.y);
+
+            if transform.position.x > min_x
+                && transform.position.x < max_x
+                && transform.position.y > min_y
+                && transform.position.y < max_y
             {
                 commands().insert_one(entity, SelectedUnit {});
             }
+        }
+    }
+}
+
+pub fn deselect_units_system() {
+    if is_mouse_button_pressed(MouseButton::Left) {
+        for (entity, _) in world().query::<&SelectedUnit>().iter() {
+            commands().remove_one::<SelectedUnit>(entity);
         }
     }
 }

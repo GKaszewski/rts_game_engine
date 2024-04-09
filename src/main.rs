@@ -3,13 +3,21 @@ mod engine;
 
 use engine::game_module::*;
 use engine::pathfinding_module::*;
+use engine::selection_module::deselect_units_system;
 use engine::selection_module::draw_selection_box;
 use engine::selection_module::draw_selection_on_units;
 use engine::selection_module::get_units_in_selection_system;
 use engine::selection_module::initialize_selection_module;
 use engine::selection_module::selection_box_system;
+use engine::unit_module::cleanup_move_points_system;
+use engine::unit_module::collision_avoidance_system;
+use engine::unit_module::draw_move_points;
 use engine::unit_module::draw_units;
+use engine::unit_module::get_path_for_selected_units_system;
 use engine::unit_module::initialize_units;
+use engine::unit_module::move_units_along_path_system;
+use engine::unit_module::spawn_unit_at_mouse_position_system;
+use engine::unit_module::update_move_point_timer_system;
 
 simple_game!("RTS Game Engine", GameState, config, setup, update);
 
@@ -96,7 +104,14 @@ fn update(state: &mut GameState, _c: &mut EngineContext) {
     }
 
     selection_box_system();
+    deselect_units_system();
+    spawn_unit_at_mouse_position_system();
     get_units_in_selection_system();
+    get_path_for_selected_units_system(state);
+    move_units_along_path_system();
+    collision_avoidance_system();
+    update_move_point_timer_system();
+    cleanup_move_points_system();
 
     // if is_mouse_button_down(MouseButton::Left) {
     //     let mouse_pos = mouse_world();
@@ -153,6 +168,7 @@ fn update(state: &mut GameState, _c: &mut EngineContext) {
 
     state.level.draw();
     draw_units();
+    draw_move_points();
     draw_selection_box();
     draw_selection_on_units();
 }
