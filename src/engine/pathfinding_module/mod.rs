@@ -1,5 +1,8 @@
+#[allow(dead_code)]
 use comfy::*;
 use pathfinding::prelude::astar;
+
+use super::PATHFINDING_Z_INDEX;
 
 #[allow(dead_code)]
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
@@ -51,11 +54,11 @@ pub struct PathfindingTerrain {
     pub width: i32,
     pub height: i32,
     pub nodes: Vec<Node>,
-    pub offset: Vec2,
+    pub offset: Option<Vec2>,
 }
 
 impl PathfindingTerrain {
-    pub fn new(width: i32, height: i32, offset: Vec2) -> Self {
+    pub fn new(width: i32, height: i32, offset: Option<Vec2>) -> Self {
         let mut nodes = Vec::new();
         for y in 0..height {
             for x in 0..width {
@@ -71,6 +74,27 @@ impl PathfindingTerrain {
             height,
             nodes,
             offset,
+        }
+    }
+
+    fn resize(&mut self, width: i32, height: i32) {
+        self.width = width;
+        self.height = height;
+        self.nodes.clear();
+        for y in 0..height {
+            for x in 0..width {
+                self.nodes.push(Node {
+                    x,
+                    y,
+                    node_type: Some(NodeType::Empty),
+                });
+            }
+        }
+    }
+
+    fn fill(&mut self, node_type: NodeType) {
+        for node in &mut self.nodes {
+            node.node_type = Some(node_type);
         }
     }
 
@@ -144,24 +168,100 @@ impl PathfindingTerrain {
         }
     }
 
+    pub fn set_pathfinding_based_on_tilemap(&mut self, level_map: &LdtkWorldMap) {
+        let map = level_map;
+        let map_json = &map.json;
+        let level = &map_json.levels[0];
+        for (_, layer) in level
+            .layer_instances
+            .as_ref()
+            .unwrap()
+            .iter()
+            .rev()
+            .enumerate()
+        {
+            let grid_size = layer.grid_size;
+            let width = level.px_wid / grid_size;
+            let height = level.px_hei / grid_size;
+
+            self.resize(width as i32, height as i32);
+
+            let tileset = layer
+                .tileset_def_uid
+                .and_then(|uid| map_json.defs.tilesets.iter().find(|t| t.uid == uid));
+
+            if let Some(tileset) = tileset {
+                tileset.enum_tags.iter().for_each(|tag| {
+                    layer.grid_tiles.iter().for_each(|tile| {
+                        let pos = tile.to_world(layer);
+                        let x = pos.x as i32;
+                        let y = pos.y as i32;
+                        let node = self.get_node_by_position(x, y);
+                        tag.tile_ids.iter().for_each(|tile_id| {
+                            if tile.t == *tile_id {
+                                match tag.enum_value_id.as_str() {
+                                    "Start" => {
+                                        if let Some(node) = node {
+                                            self.set_node_type(node.x, node.y, NodeType::Start);
+                                        }
+                                    }
+                                    "End" => {
+                                        if let Some(node) = node {
+                                            self.set_node_type(node.x, node.y, NodeType::End);
+                                        }
+                                    }
+                                    "Unwalkable" => {
+                                        if let Some(node) = node {
+                                            self.set_node_type(
+                                                node.x,
+                                                node.y,
+                                                NodeType::Unwalkable,
+                                            );
+                                        }
+                                    }
+                                    "Walkable" => {
+                                        if let Some(node) = node {
+                                            self.set_node_type(node.x, node.y, NodeType::Walkable);
+                                        }
+                                    }
+                                    _ => {}
+                                }
+                            }
+                        });
+                    });
+                });
+            }
+        }
+    }
+
     pub fn draw(&self, display_coords: bool) {
         for node in &self.nodes {
             let color = match node.node_type {
                 Some(NodeType::Empty) => BLACK,
-                Some(NodeType::Walkable) => GREEN,
-                Some(NodeType::Unwalkable) => RED,
-                Some(NodeType::Path) => BLUE,
+                Some(NodeType::Walkable) => Color::new(0.0, 0.0, 0.0, 0.0),
+                Some(NodeType::Unwalkable) => Color::new(255.0, 0.0, 0.0, 0.1),
+                Some(NodeType::Path) => Color::new(0.0, 0.0, 255.0, 0.2),
                 Some(NodeType::Start) => YELLOW,
                 Some(NodeType::End) => YELLOW,
-                Some(NodeType::Neighbor) => ORANGE,
-                None => unreachable!(),
+                Some(NodeType::Neighbor) => Color::new(255.0, 0.0, 255.0, 0.2),
+                None => GRAY,
             };
-            draw_rect(
-                vec2(node.x as f32, node.y as f32) + self.offset,
-                vec2(1.0, 1.0),
-                color,
-                1,
-            );
+
+            if let Some(offset) = self.offset {
+                draw_rect(
+                    vec2(node.x as f32, node.y as f32) + offset,
+                    vec2(1.0, 1.0),
+                    color,
+                    PATHFINDING_Z_INDEX,
+                );
+            } else {
+                draw_rect(
+                    vec2(node.x as f32, node.y as f32),
+                    vec2(1.0, 1.0),
+                    color,
+                    PATHFINDING_Z_INDEX,
+                );
+            }
             if display_coords {
                 draw_text(
                     &format!("[{},{}]", node.x, node.y),
@@ -180,7 +280,7 @@ mod tests {
 
     #[test]
     fn test_pathfinding() {
-        let mut terrain = PathfindingTerrain::new(2, 2, vec2(0.0, 0.0));
+        let mut terrain = PathfindingTerrain::new(2, 2, None);
         terrain.set_node_type(0, 0, NodeType::Start);
         terrain.set_node_type(1, 1, NodeType::End);
 

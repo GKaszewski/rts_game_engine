@@ -6,7 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-comfy = "0.3.1"
+comfy = { version = "0.3.1", features = ["ldtk"] }
 pathfinding = "4.9.1"
 
 [profile.dev]
